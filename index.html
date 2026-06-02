@@ -279,17 +279,24 @@ async function loadData(){
   render();
 }
 
-async function addShop(shop){
-  await fetch(SCRIPT_URL,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
-      action:"add",
-      data:shop
-    })
-  });
+async function addShop(shop) {
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "add",
+        data: shop
+      })
+    });
 
-  loadData(); // refresh after add
+    const result = await res.json();
+    console.log("Add response:", result);
+
+    loadData();
+  } catch (err) {
+    console.error("Error adding shop:", err);
+  }
 }
 function changeWeek(dir){weekOffset+=dir;render()}
 
