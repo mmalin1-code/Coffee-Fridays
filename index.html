@@ -271,20 +271,55 @@ function updateWeekNav(){
 async function loadData(){
   setStatus("","Connecting...");
   try{
-    const r=await fetch(SCRIPT_URL+"?action=load");
-    const j=await r.json();
-    if(j.data)allData=j.data;
+    const response = await fetch(SCRIPT_URL + "?action=load");
+    const result = await response.json();
+
+    if(!result.ok){
+      throw new Error(result.error || "Load failed");
+    }
+
+    allData = result.data || {};
     setStatus("live","Live — changes sync to everyone");
-  }catch(e){setStatus("error","Offline — changes won't save")}
+
+  }catch(err){
+    console.error("Load failed:", err);
+    setStatus("error","Offline — changes won't save");
+  }
+
   render();
 }
 
+// Queue saves so rapid changes (such as typing a picker name) do not
+// send overlapping snapshots that can overwrite newer data.
+let saveQueue = Promise.resolve();
+
 async function saveData(){
-  setStatus("saving","Saving...");
-  try{
-    await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"save",data:allData})});
+  const snapshot = JSON.stringify({
+    action: "save",
+    data: allData
+  });
+
+  saveQueue = saveQueue.then(async () => {
+    setStatus("saving","Saving...");
+
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: snapshot
+    });
+
+    const result = await response.json();
+
+    if(!result.ok){
+      throw new Error(result.error || "Save failed");
+    }
+
     setStatus("live","Saved");
-  }catch(e){setStatus("error","Save failed")}
+  }).catch(err => {
+    console.error("Save failed:", err);
+    setStatus("error","Save failed");
+  });
+
+  return saveQueue;
 }
 
 function changeWeek(dir){weekOffset+=dir;render()}
@@ -464,7 +499,14 @@ function submitAddShop(){
     attendees:[],interested:[],times:{}
   });
   ["f-name","f-opens","f-maps","f-hood","f-address","f-strava","f-distance"].forEach(id=>document.getElementById(id).value="");
-  render();saveData();showToast("Shop added!");
+  render();
+  saveData().then(() => {
+    if(document.getElementById("status-msg").textContent === "Saved"){
+      showToast("Shop added and saved!");
+    }else{
+      showToast("Shop added here, but the save failed.");
+    }
+  });
 }
 applyTheme();
 loadData();
