@@ -1,6 +1,3 @@
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -229,7 +226,7 @@ function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
 function fmt(d){return d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
 function fmtShort(d){return d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}
 function getFriday(off){const o=off===undefined?weekOffset:off;const m=getMonday(new Date());m.setDate(m.getDate()+o*7);return addDays(m,4)}
-function getKey(off){return getFriday(off===undefined?weekOffset:off).toISOString().split("T")[0]}
+function getKey(off){const d=getFriday(off===undefined?weekOffset:off);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function ensureWeek(k){if(!allData[k])allData[k]={shops:[],picker:""}}
 function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function initials(n){return(n||"").trim().split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
@@ -271,52 +268,39 @@ function updateWeekNav(){
 async function loadData(){
   setStatus("","Connecting...");
   try{
-    const response = await fetch(SCRIPT_URL + "?action=load");
-    const result = await response.json();
-
-    if(!result.ok){
-      throw new Error(result.error || "Load failed");
-    }
-
+    const response = await fetch(SCRIPT_URL + "?action=load&t=" + Date.now());
+    const text = await response.text();
+    let result;
+    try{ result = JSON.parse(text); }
+    catch(e){ throw new Error("Script didn't return JSON (set deployment access to 'Anyone')"); }
+    if(!result.ok) throw new Error(result.error || "Load failed");
     allData = result.data || {};
-    setStatus("live","Live — changes sync to everyone");
-
+    setStatus("live","Live \u2014 changes sync to everyone");
   }catch(err){
     console.error("Load failed:", err);
-    setStatus("error","Offline — changes won't save");
+    setStatus("error","Offline \u2014 " + (err.message || "can't reach script"));
   }
-
   render();
 }
 
-// Queue saves so rapid changes (such as typing a picker name) do not
-// send overlapping snapshots that can overwrite newer data.
+// Saves only the current week (not the whole history), queued so
+// rapid changes never overlap.
 let saveQueue = Promise.resolve();
 
-async function saveData(){
-  const snapshot = JSON.stringify({
-    action: "save",
-    data: allData
-  });
+function saveData(){
+  const k = getKey();
+  ensureWeek(k);
+  const body = JSON.stringify({action:"saveWeek", key:k, data:allData[k]});
 
   saveQueue = saveQueue.then(async () => {
     setStatus("saving","Saving...");
-
-    const response = await fetch(SCRIPT_URL, {
-      method: "POST",
-      body: snapshot
-    });
-
+    const response = await fetch(SCRIPT_URL, {method:"POST", body});
     const result = await response.json();
-
-    if(!result.ok){
-      throw new Error(result.error || "Save failed");
-    }
-
+    if(!result.ok) throw new Error(result.error || "Save failed");
     setStatus("live","Saved");
   }).catch(err => {
     console.error("Save failed:", err);
-    setStatus("error","Save failed");
+    setStatus("error","Save failed \u2014 " + (err.message || ""));
   });
 
   return saveQueue;
