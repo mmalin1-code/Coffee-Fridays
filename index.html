@@ -232,9 +232,13 @@ function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function fixUrl(u){
   u=(u||"").trim();
   if(!u) return "";
-  if(/^https?:\/\//i.test(u)) return u;
-  if(/^[a-z][a-z0-9+.\-]*:/i.test(u)) return ""; // block javascript:, data:, etc.
-  return "https://"+u.replace(/^\/+/,"");
+  // Pasted share text like "Dogtown Coffee https://maps.apple.com/?..." -> pull out the real link
+  const m=u.match(/https?:\/\/(?:[\w-]+\.)+[\w-]+[^\s<>"']*/i);
+  if(m) return m[0];
+  if(/^(javascript|data|vbscript|file):/i.test(u)||/^[a-z][a-z0-9+.\-]*:\/\//i.test(u)) return "";
+  if(/^(?:[\w-]+\.)+[a-z]{2,}(?:[\/?#]\S*)?$/i.test(u)) return "https://"+u; // bare link
+  // Anything else (a shop name or address) becomes a Google Maps search
+  return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(u);
 }
 function initials(n){return(n||"").trim().split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
 function isUrl(u,h){try{return new URL(u).hostname.includes(h)}catch(e){return false}}
