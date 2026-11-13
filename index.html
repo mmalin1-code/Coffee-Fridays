@@ -577,16 +577,18 @@ function submitAddShop(){
 const MAP_CENTER=[38.627,-90.199]; // St. Louis
 let leafletMap=null,mapLayer=null,mapBusy=false;
 
-let tileLayerRef=null;
-// Clean, minimal basemap that follows the site's light/dark setting.
+let tileLayerRef=null,labelLayerRef=null;
+// Clean gray basemap (Esri, no API key needed) that follows the site's light/dark setting.
 function setMapTiles(){
   if(!leafletMap||!window.L) return;
   if(tileLayerRef) leafletMap.removeLayer(tileLayerRef);
-  const style=isDark?"dark_all":"light_all";
-  tileLayerRef=L.tileLayer("https://{s}.basemaps.cartocdn.com/"+style+"/{z}/{x}/{y}{r}.png",{
-    subdomains:"abcd",maxZoom:19,
-    attribution:"&copy; OpenStreetMap contributors &copy; CARTO"
+  if(labelLayerRef) leafletMap.removeLayer(labelLayerRef);
+  const base="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_"+(isDark?"Dark":"Light")+"_Gray_";
+  tileLayerRef=L.tileLayer(base+"Base/MapServer/tile/{z}/{y}/{x}",{
+    maxZoom:16,
+    attribution:"Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, &copy; OpenStreetMap contributors"
   }).addTo(leafletMap);
+  labelLayerRef=L.tileLayer(base+"Reference/MapServer/tile/{z}/{y}/{x}",{maxZoom:16}).addTo(leafletMap);
 }
 
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
@@ -731,7 +733,7 @@ async function toggleMap(){
   try{
     await loadLeaflet();
     if(!leafletMap){
-      leafletMap=L.map("map").setView(MAP_CENTER,11);
+      leafletMap=L.map("map",{maxZoom:16}).setView(MAP_CENTER,11);
       setMapTiles();
       mapLayer=L.layerGroup().addTo(leafletMap);
     }
