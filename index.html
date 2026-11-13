@@ -146,8 +146,6 @@ hr.divider{border:none;border-top:0.5px solid var(--border);margin:0}
 [data-theme="dark"] .leaflet-popup-content-wrapper,[data-theme="dark"] .leaflet-popup-tip{background:var(--card);color:var(--text)}
 [data-theme="dark"] .leaflet-container a.leaflet-popup-close-button{color:var(--text-muted)}
 [data-theme="dark"] .coffee-pin span{border-color:var(--card)}
-#map .leaflet-tile-pane{filter:saturate(.7) brightness(1.03)}
-[data-theme="dark"] #map .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.85) saturate(.6)}
 </style>
 </head>
 <body>
@@ -579,25 +577,16 @@ function submitAddShop(){
 const MAP_CENTER=[38.627,-90.199]; // St. Louis
 let leafletMap=null,mapLayer=null,mapBusy=false;
 
-let tileLayerRef=null,tileOk=0,tileErrors=0,tilesFailed=false;
-// Standard OpenStreetMap basemap (no API key). Dark mode darkens it with CSS.
+let tileLayerRef=null;
+// Clean, minimal basemap that follows the site's light/dark setting.
 function setMapTiles(){
   if(!leafletMap||!window.L) return;
   if(tileLayerRef) leafletMap.removeLayer(tileLayerRef);
-  tileLayerRef=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
-    maxZoom:19,
-    attribution:"&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
-  });
-  tileLayerRef.on("tileload",()=>{tileOk++});
-  tileLayerRef.on("tileerror",()=>{
-    tileErrors++;
-    if(tileErrors>=4&&!tileOk){
-      tilesFailed=true;
-      const m=document.getElementById("map-msg");
-      if(m) m.textContent="The map background isn't loading (ad blocker or network?).";
-    }
-  });
-  tileLayerRef.addTo(leafletMap);
+  const style=isDark?"dark_all":"light_all";
+  tileLayerRef=L.tileLayer("https://{s}.basemaps.cartocdn.com/"+style+"/{z}/{x}/{y}{r}.png",{
+    subdomains:"abcd",maxZoom:19,
+    attribution:"&copy; OpenStreetMap contributors &copy; CARTO"
+  }).addTo(leafletMap);
 }
 
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
@@ -766,8 +755,7 @@ async function toggleMap(){
     }
     if(pts.length) leafletMap.fitBounds(pts,{padding:[30,30],maxZoom:13});
     msg.textContent=pts.length+" place"+(pts.length===1?"":"s")+" on the map"
-      +(missing.length?" \u00b7 couldn't find: "+missing.join(", ")+" (add an address to fix)":"")
-      +(tilesFailed?" \u00b7 the map background isn't loading (ad blocker or network?)":"");
+      +(missing.length?" \u00b7 couldn't find: "+missing.join(", ")+" (add an address to fix)":"");
   }catch(err){
     msg.textContent="Map problem \u2014 "+(err.message||"try again");
   }
