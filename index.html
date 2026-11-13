@@ -136,9 +136,16 @@ main{max-width:900px;margin:1.5rem auto 0;padding:0 1.5rem}
 .toast.show{opacity:1}
 hr.divider{border:none;border-top:0.5px solid var(--border);margin:0}
 .coffee-pin{background:none;border:none}
-.coffee-pin span{display:flex;align-items:center;justify-content:center;width:30px;height:30px;background:#2A5C3F;border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.coffee-pin span{display:flex;align-items:center;justify-content:center;width:30px;height:30px;background:var(--accent);border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .coffee-pin i{transform:rotate(45deg);font-style:normal;font-size:14px;line-height:1}
-#map{height:420px;margin-top:12px;border-radius:12px;overflow:hidden;display:none;z-index:0}
+#map{height:420px;margin-top:12px;border-radius:14px;overflow:hidden;display:none;z-index:0;border:0.5px solid var(--border-med)}
+.leaflet-container{font-family:'DM Sans',sans-serif}
+.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.18)}
+.leaflet-popup-content{font-size:13px;line-height:1.45;margin:12px 14px}
+.leaflet-popup-content a{color:var(--accent);font-weight:500;text-decoration:none}
+[data-theme="dark"] .leaflet-popup-content-wrapper,[data-theme="dark"] .leaflet-popup-tip{background:var(--card);color:var(--text)}
+[data-theme="dark"] .leaflet-container a.leaflet-popup-close-button{color:var(--text-muted)}
+[data-theme="dark"] .coffee-pin span{border-color:var(--card)}
 </style>
 </head>
 <body>
@@ -279,7 +286,7 @@ function applyTheme(){
   if(ic)ic.textContent=isDark?"\uD83C\uDF19":"\u2600\uFE0F";
   if(lb)lb.textContent=isDark?"Dark":"Light";
 }
-function toggleTheme(){isDark=!isDark;localStorage.setItem("dtrc_theme",isDark?"dark":"light");applyTheme()}
+function toggleTheme(){isDark=!isDark;localStorage.setItem("dtrc_theme",isDark?"dark":"light");applyTheme();if(typeof setMapTiles==="function")setMapTiles()}
 
 function onMyNameInput(){
   myName=document.getElementById("my-name").value.trim();
@@ -570,6 +577,18 @@ function submitAddShop(){
 const MAP_CENTER=[38.627,-90.199]; // St. Louis
 let leafletMap=null,mapLayer=null,mapBusy=false;
 
+let tileLayerRef=null;
+// Clean, minimal basemap that follows the site's light/dark setting.
+function setMapTiles(){
+  if(!leafletMap||!window.L) return;
+  if(tileLayerRef) leafletMap.removeLayer(tileLayerRef);
+  const style=isDark?"dark_all":"light_all";
+  tileLayerRef=L.tileLayer("https://{s}.basemaps.cartocdn.com/"+style+"/{z}/{x}/{y}{r}.png",{
+    subdomains:"abcd",maxZoom:19,
+    attribution:"&copy; OpenStreetMap contributors &copy; CARTO"
+  }).addTo(leafletMap);
+}
+
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 function localKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 
@@ -713,7 +732,7 @@ async function toggleMap(){
     await loadLeaflet();
     if(!leafletMap){
       leafletMap=L.map("map").setView(MAP_CENTER,11);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(leafletMap);
+      setMapTiles();
       mapLayer=L.layerGroup().addTo(leafletMap);
     }
     setTimeout(()=>leafletMap.invalidateSize(),50);
