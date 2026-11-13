@@ -213,7 +213,7 @@ hr.divider{border:none;border-top:0.5px solid var(--border);margin:0}
 
   <div class="add-section">
     <div class="add-card">
-      <h3>Get an email when a new coffee shop is posted!</h3>
+      <h3>Get an email when a coffee spot is posted</h3>
       <div class="form-grid">
         <div class="form-field"><label>Email</label><input type="email" id="sub-email" placeholder="you@example.com" autocomplete="email"/></div>
       </div>
@@ -550,6 +550,14 @@ function submitAddShop(){
     }
   });
 }
+// Open on the week named in the link, e.g. https://site/#2026-11-20
+function applyHash(){
+  const m=(location.hash||"").match(/^#(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return;
+  const target=getMonday(new Date(+m[1],+m[2]-1,+m[3],12));
+  weekOffset=Math.round((target-getMonday(new Date()))/604800000);
+}
+applyHash();
 applyTheme();
 loadData();
 </script>
